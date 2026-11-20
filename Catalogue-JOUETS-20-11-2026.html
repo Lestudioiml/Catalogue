@@ -420,6 +420,135 @@ function xlsx(){
 function toast(m){ const t=$("#toast"); t.textContent=m; t.style.display="block"; clearTimeout(t._h); t._h=setTimeout(()=>t.style.display="none",3200); }
 renderBar(); renderCart();
 new IntersectionObserver(e=>{const v=e[0].isIntersecting; $("#fc").style.opacity=v?0:1; $("#fc").style.pointerEvents=v?"none":"";}).observe($("#panier"));
+</script><!-- TUTO:START — visite guidée acheteur (injectée avant </body> par inject_tuto.py) -->
+<style>
+.tt-block{position:fixed;inset:0;z-index:80;background:transparent}
+.tt-dim{position:fixed;inset:0;z-index:81;background:rgba(10,10,10,.78);pointer-events:none;transition:opacity .2s}
+.tt-m{position:fixed;z-index:81;background:rgba(10,10,10,.78);pointer-events:none}
+.tt-spot{position:fixed;z-index:82;border-radius:10px;box-shadow:0 0 0 3px var(--accent),0 0 0 8px rgba(200,16,46,.25);pointer-events:none}
+.tt-pop{position:fixed;z-index:83;background:#fff;color:#111;border-radius:14px;width:min(380px,calc(100vw - 32px));padding:20px 22px 16px;box-shadow:0 18px 50px rgba(0,0,0,.35);font-size:14px;line-height:1.5;transition:top .25s,left .25s}
+.tt-pop.center{left:50%!important;top:50%!important;transform:translate(-50%,-50%);width:min(520px,calc(100vw - 32px));padding:28px 28px 20px}
+.tt-k{font-size:10.5px;letter-spacing:.25em;text-transform:uppercase;color:var(--accent);font-weight:700}
+.tt-pop h4{font-size:19px;font-weight:800;line-height:1.2;margin:6px 0 8px}
+.tt-pop.center h4{font-size:24px}
+.tt-pop p{color:#444}
+.tt-pop ul{margin:8px 0 0 0;padding:0;list-style:none}
+.tt-pop li{padding:3px 0 3px 22px;position:relative;color:#444}
+.tt-pop li:before{content:"";position:absolute;left:4px;top:11px;width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.tt-steps{display:grid;gap:10px;margin:14px 0 4px}
+.tt-step{display:flex;gap:12px;align-items:flex-start;background:#f6f6f4;border-radius:10px;padding:10px 12px;text-align:left}
+.tt-step b.n{flex:none;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px}
+.tt-step span{font-size:13px;color:#333}
+.tt-step span strong{color:#111}
+.tt-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:16px}
+.tt-dots{display:flex;gap:5px}
+.tt-dots i{width:7px;height:7px;border-radius:50%;background:#ddd}
+.tt-dots i.on{background:var(--accent);width:18px;border-radius:99px}
+.tt-btns{display:flex;gap:8px}
+.tt-btns button{border:none;border-radius:99px;padding:9px 16px;font-weight:700;font-size:13px}
+.tt-next{background:var(--accent);color:#fff}
+.tt-prev{background:#f0f0f0;color:#111}
+.tt-skip{border:none;background:none;color:#888;font-size:12.5px;text-decoration:underline;padding:0}
+.tt-help{position:fixed;left:18px;bottom:18px;z-index:31;border:none;background:#fff;color:#111;border-radius:99px;padding:10px 16px 10px 12px;font-size:13px;font-weight:700;box-shadow:0 6px 22px rgba(0,0,0,.18);display:none;align-items:center;gap:8px}
+.tt-help b{width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:13px}
+.tt-help.on{display:inline-flex}
+@media(max-width:640px){.tt-help span{display:none}.tt-help{padding:10px}.tt-pop:not(.center){left:16px!important;right:16px;width:auto;top:auto!important;bottom:16px}}
+</style>
+<button class="tt-help" id="ttHelp" title="Revoir le guide"><b>?</b><span>Guide</span></button>
+<script>
+(function(){
+  const KEY="imlTutoSeen_v1";
+  const q=s=>document.querySelector(s);
+  const seen=()=>{try{return localStorage.getItem(KEY)==="1";}catch(e){return false;}};
+  const markSeen=()=>{try{localStorage.setItem(KEY,"1");}catch(e){}};
+  const fob=()=>typeof MODE!=="undefined"&&MODE==="FOB";
+  const barH=()=>{const b=q("#bar");return b?b.offsetHeight:0;};
+  const toBar=()=>window.scrollTo({top:(q(".hero")||{offsetHeight:0}).offsetHeight,behavior:"smooth"});
+  const below=el=>{const y=el.getBoundingClientRect().top+scrollY-barH()-24;window.scrollTo({top:Math.max(0,y),behavior:"smooth"});};
+
+  const STEPS=[
+    {center:true,k:"Bienvenue",t:"Découvrez le catalogue en 1 minute",
+     h:()=>`<p>Ce guide rapide vous montre comment trouver vos produits, consulter les fiches et transmettre votre sélection à IML Group.</p>
+      <p style="margin-top:8px;color:#888;font-size:12.5px">Mode d’achat choisi : <b style="color:#111">${fob()?"FOB – prix en dollars US ($)":"France – prix en euros HT (€)"}</b></p>`,
+     next:"Commencer la visite"},
+    {el:()=>q("#bar .tab"),go:toBar,k:"1 · Naviguer",t:"Parcourez par catégorie",
+     h:()=>`<p>Cliquez sur une catégorie pour n’afficher que ses produits. <b>Tout</b> affiche l’ensemble du catalogue. Le chiffre indique le nombre de références.</p>`},
+    {el:()=>q("#bar .bar2"),go:toBar,k:"2 · Filtrer",t:"Affinez votre recherche",
+     h:()=>`<ul><li>Filtrez par <b>âge</b>, <b>prix</b> ou <b>marque</b></li><li>Triez par prix croissant ou décroissant</li><li>Affichez les <b>Nouveautés 2027</b> ou les <b>Licences officielles</b></li><li>Recherchez par nom, référence ou EAN</li></ul>`},
+    {el:()=>q("#bar .mode"),go:toBar,k:"3 · Mode d’achat",t:"France ou FOB, à tout moment",
+     h:()=>`<p><b>France</b> : prix tarif HT en euros, marchandise disponible en France.<br><b>FOB</b> : prix en dollars US, départ port Chine, transport à votre charge.</p><p style="margin-top:6px">Tous les prix, le panier et les exports suivent le mode choisi.</p>`},
+    {el:()=>q("#cats .card"),go:()=>below(q("#cats .card")),k:"4 · Fiche produit",t:"Cliquez sur un produit",
+     h:()=>`<p>La fiche détaillée s’ouvre avec :</p><ul><li>les <b>photos</b> (galerie) et leur téléchargement en HD</li><li>les <b>spécifications</b> complètes</li><li>la <b>logistique</b> : PCB, dimensions et poids des cartons, D3E, certifications</li></ul>`},
+    {el:()=>q("#cats .card .chk"),pad:10,go:()=>below(q("#cats .card")),k:"5 · Sélection",t:"Cochez pour ajouter au panier",
+     h:()=>`<p>Cochez la case en haut à droite de la photo pour ajouter le produit à votre sélection (ou bouton <b>Ajouter au panier</b> dans la fiche).</p><p style="margin-top:6px">Les badges indiquent l’âge, les licences, les nouveautés et l’IA intégrée.</p>`},
+    {el:()=>q("#panier"),go:()=>below(q("#panier")),k:"6 · Panier",t:"Ajustez vos quantités",
+     h:()=>`<ul><li>Quantités saisies en <b>cartons master</b> : les pièces sont calculées automatiquement (cartons × PCB)</li><li>Total de votre sélection mis à jour en direct</li>${fob()?"<li><b>Simulation conteneur</b> : volume en m³ et conteneur recommandé (20', 40', 40' HC)</li>":""}<li>Retirez un produit avec ✕</li></ul>`},
+    {center:true,k:"7 · Commander",t:"Comment passer commande",
+     h:()=>`<div class="tt-steps">
+      <div class="tt-step"><b class="n">1</b><span><strong>Copier votre panier</strong> : le récapitulatif (références, quantités, totaux) est copié, prêt à coller.</span></div>
+      <div class="tt-step"><b class="n">2</b><span><strong>Collez-le dans un e-mail</strong> à votre interlocuteur IML Group, et/ou joignez le <strong>fichier Excel</strong> de votre sélection.</span></div>
+      <div class="tt-step"><b class="n">3</b><span>IML Group vous <strong>confirme disponibilités et délais</strong>. Téléchargez aussi les <strong>photos HD</strong> (ZIP, renommées par EAN) pour votre référencement.</span></div></div>
+      <p style="font-size:12.5px;color:#888">Rien n’est envoyé automatiquement : votre sélection reste sur votre écran. Elle est perdue si vous rechargez la page.</p>`,
+     next:"C’est parti !"}
+  ];
+
+  let i=0,box=null;
+  function build(){
+    box=document.createElement("div");
+    box.innerHTML='<div class="tt-block"></div><div class="tt-dim"></div><div class="tt-m"></div><div class="tt-m"></div><div class="tt-m"></div><div class="tt-m"></div><div class="tt-spot"></div><div class="tt-pop" role="dialog" aria-modal="true"></div>';
+    document.body.appendChild(box);
+    box.querySelector(".tt-block").onclick=e=>e.stopPropagation();
+  }
+  function place(){
+    if(!box) return;
+    const s=STEPS[i], spot=box.querySelector(".tt-spot"), pop=box.querySelector(".tt-pop"), dim=box.querySelector(".tt-dim");
+    const el=s.center?null:s.el();
+    const ms=box.querySelectorAll(".tt-m");
+    if(!el){ spot.style.display="none"; ms.forEach(m=>m.style.display="none"); dim.style.opacity=1; pop.classList.add("center"); return; }
+    dim.style.opacity=0; spot.style.display="block"; pop.classList.remove("center");
+    const r=el.getBoundingClientRect(), p=s.pad||6;
+    const T=r.top-p, L=r.left-p, W=r.width+2*p, H=r.height+2*p, px=v=>Math.max(0,v)+"px";
+    Object.assign(spot.style,{top:T+"px",left:L+"px",width:W+"px",height:H+"px"});
+    [[0,0,"100%",px(T)],[px(T+H),0,"100%",px(innerHeight-T-H)],[px(T),0,px(L),px(H)],[px(T),px(L+W),px(innerWidth-L-W),px(H)]]
+      .forEach(([t,l,w,h],j)=>Object.assign(ms[j].style,{display:"block",top:typeof t==="number"?t+"px":t,left:typeof l==="number"?l+"px":l,width:w,height:h}));
+    if(innerWidth<=640) return; // bulle en bas d'écran (CSS)
+    const pw=pop.offsetWidth, ph=pop.offsetHeight, m=16;
+    let top=r.bottom+p+14;
+    if(top+ph>innerHeight-m) top=r.top-p-14-ph;
+    if(top<m) top=Math.min(innerHeight-ph-m, Math.max(m, r.bottom+p+14));
+    let left=r.left+r.width/2-pw/2; left=Math.max(m,Math.min(left,innerWidth-pw-m));
+    pop.style.top=top+"px"; pop.style.left=left+"px";
+  }
+  function show(n){
+    i=n; const s=STEPS[i], pop=box.querySelector(".tt-pop"), last=i===STEPS.length-1;
+    pop.innerHTML=`<div class="tt-k">${s.k}</div><h4>${s.t}</h4>${s.h()}
+      <div class="tt-foot">${i===0?'<button class="tt-skip">Passer le guide</button>':`<div class="tt-dots">${STEPS.slice(1).map((_,j)=>`<i class="${j+1===i?"on":""}"></i>`).join("")}</div>`}
+      <div class="tt-btns">${i>0?'<button class="tt-prev">Retour</button>':""}<button class="tt-next">${s.next||(last?"Terminer":"Suivant")}</button></div></div>`;
+    pop.querySelector(".tt-next").onclick=()=>{ if(last){ end(); toBar(); } else show(i+1); };
+    if(pop.querySelector(".tt-prev")) pop.querySelector(".tt-prev").onclick=()=>show(i-1);
+    if(pop.querySelector(".tt-skip")) pop.querySelector(".tt-skip").onclick=end;
+    if(s.go && s.el && s.el()) s.go();
+    place(); setTimeout(place,350); setTimeout(place,800);
+    pop.querySelector(".tt-next").focus({preventScroll:true});
+  }
+  function start(){
+    if(typeof closeM==="function") closeM();
+    if(!box) build(); box.style.display=""; document.body.style.overflow="";
+    show(0);
+  }
+  function end(){ markSeen(); if(box) box.style.display="none"; box&&box.remove(); box=null; }
+  addEventListener("scroll",place,{passive:true}); addEventListener("resize",place);
+  addEventListener("keydown",e=>{ if(!box) return;
+    if(e.key==="Escape"){e.stopImmediatePropagation();end();}
+    else if(e.key==="ArrowRight"&&i<STEPS.length-1) show(i+1);
+    else if(e.key==="ArrowLeft"&&i>0) show(i-1); },true);
+
+  const help=q("#ttHelp"); help.onclick=start;
+  const orig=window.setMode;
+  window.setMode=function(m){ const first=typeof MODE==="undefined"||MODE===null; orig(m); help.classList.add("on"); if(first&&!seen()) setTimeout(start,450); };
+  window.startTuto=start;
+})();
 </script>
+<!-- TUTO:END -->
 </body>
 </html>
