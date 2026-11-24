@@ -89,8 +89,8 @@ h1{font-family:Anton,sans-serif;font-weight:400;font-size:clamp(46px,6vw,92px);l
 .dots i.on{width:38px;background:var(--ink)}
 .mid{position:absolute;left:50%;transform:translateX(-50%);bottom:26px;text-align:center;font-size:12px;letter-spacing:.06em;opacity:.9;line-height:1.5}
 .mid b{display:block;font-size:13px;letter-spacing:.2em}
-.next{display:flex;align-items:center;gap:12px;background:var(--pill);border:1px solid var(--line);border-radius:18px;padding:8px 14px 8px 8px;transition:.25s;text-align:left}
-.next:hover{filter:brightness(1.08)}
+.next{display:flex;align-items:center;gap:14px;background:none;border:0;border-radius:0;padding:4px;transition:.25s;text-align:left}
+.next:hover img{transform:scale(1.06)}.next img{transition:transform .3s}
 .next .th{width:70px;height:62px;border-radius:12px;display:grid;place-items:center;overflow:hidden}
 .next img{max-width:62px;max-height:56px;object-fit:contain;filter:drop-shadow(0 6px 6px rgba(0,0,0,.3))}
 .next small{display:block;font-size:10px;letter-spacing:.24em;opacity:.75}
@@ -137,6 +137,15 @@ h1{font-family:Anton,sans-serif;font-weight:400;font-size:clamp(46px,6vw,92px);l
 .dmain{perspective:1400px;touch-action:pan-y;user-select:none}
 .dmain.r360{cursor:grab}.dmain.r360.drag{cursor:grabbing}
 .dmain img{-webkit-user-drag:none;pointer-events:none}
+.v3d{position:absolute;inset:0;display:none;align-items:center;justify-content:center;perspective:2200px;cursor:grab;touch-action:pan-y;user-select:none}
+.v3d.on{display:flex}.v3d.drag{cursor:grabbing}
+.r3d{position:relative;transform-style:preserve-3d;will-change:transform}
+.r3d .f{position:absolute;left:50%;top:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;pointer-events:none;-webkit-user-drag:none}
+.r3d .hd{backface-visibility:visible}
+.dmain .r3d img{max-width:none;max-height:none;filter:none;transition:none}
+.r3d .tp{position:absolute;left:50%;border-radius:10px;backface-visibility:hidden}
+.r3d .sh{position:absolute;left:50%;border-radius:50%;background:radial-gradient(ellipse at center,rgba(0,0,0,.28),transparent 70%);filter:blur(10px)}
+.h3d{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);font-size:11px;letter-spacing:.14em;font-weight:700;color:#777;text-transform:uppercase}
 .b360{position:absolute;left:60px;top:8px;display:none;align-items:center;gap:10px;background:#fff;border-radius:30px;padding:8px 8px 8px 16px;font-size:11px;font-weight:700;letter-spacing:.14em;color:#141414;box-shadow:0 6px 18px #0000001a;z-index:3}
 .dmain.r360 .b360{display:flex}
 .b360 .ic{font-size:14px;letter-spacing:0}
@@ -238,7 +247,7 @@ h1{font-family:Anton,sans-serif;font-weight:400;font-size:clamp(46px,6vw,92px);l
   <div class="dr">
    <div class="bignum" id="bignum">01</div>
    <div class="vname" id="vname"></div>
-   <div class="dmain"><button class="darr p" id="dp">←</button><img id="dimg" alt=""><button class="darr n" id="dn">→</button><div class="b360" id="b360"><span class="ic">⟲</span>360° · GLISSER POUR TOURNER<span class="dots4" id="dots4"></span><button id="play360">TOURNER</button></div></div>
+   <div class="dmain"><button class="darr p" id="dp">←</button><img id="dimg" alt=""><button class="darr n" id="dn">→</button><div class="v3d" id="v3d"><div class="r3d" id="r3d"></div><div class="h3d">⟷ Faites glisser pour faire pivoter</div></div></div>
    <div class="thumbs" id="thumbs"></div>
    <div class="note" id="note"></div>
   </div>
@@ -383,15 +392,16 @@ function render(anim){
  $('dots').innerHTML=rs.map((_,i)=>`<i class="${i===I?'on':''}" data-i="${i}"></i>`).join('');
  $('dots').querySelectorAll('i').forEach(d=>d.onclick=()=>{DIR=+d.dataset.i<I?-1:1;I=+d.dataset.i;C=ranges()[I].def;render(true)});
  $('mid').innerHTML=`<b>${r.kind.toUpperCase()}</b>${r.v.length} coloris · ${rs.length} gammes ${r.brand}`;
- const nx=C+1<r.v.length?{v:r.v[C+1],lab:'COLORIS SUIVANT',name:r.v[C+1].colorFr}:{v:rs[(I+1)%rs.length].v[rs[(I+1)%rs.length].def],lab:'GAMME SUIVANTE',name:rs[(I+1)%rs.length].name};
- setTimeout(()=>{$('nimg').src=nx.v.img;$('nlab').textContent=nx.lab;$('nname').textContent=nx.name},wheelJob?1150:0);pre(nx.v.img);
+ const nr=rs[(I+1)%rs.length],nx=nr.v[nr.def];
+ if(newRange)setTimeout(()=>{$('nimg').src=nx.img;$('nname').textContent=nr.name},wheelJob?1150:0);pre(nx.img);
 }
 function go(d){DIR=d<0?-1:1;const n=ranges().length;I=(I+d+n)%n;C=ranges()[I].def;render(true)}
-$('prev').onclick=()=>go(-1);$('next').onclick=()=>go(1);$('nextc').onclick=()=>{const r=ranges()[I];if(C+1<r.v.length){DIR=1;C++;render()}else go(1)};
+$('prev').onclick=()=>go(-1);$('next').onclick=()=>go(1);$('nextc').onclick=()=>go(1);
 // detail : coloris assorti aux vues ; tous les coloris affichés, non cliquables
 function dVar(){const r=ranges()[I],sel=r.v[C];if(sel.views)return sel;if(r.views.length)return r.pv==null?null:r.v[r.pv];return sel}
 function dViews(){const r=ranges()[I],v=dVar();return v&&v.views?v.views:r.views}
-function slides(){const v=dVar(),vw=dViews();return [...(v&&!v.views?[['Lot',v.img]]:[]),...vw]}
+const BOX3D={'TW-STRATA-3KAK':{dir:'bagagerie/',f:[611,900],r:[357,900],b:[603,900],l:[355,900],h:[611,208],top:'#5f6a56'}};
+function slides(){const v=dVar(),vw=dViews();return [...(v&&BOX3D[v.ref]?[['360°','#3d']]:[]),...(v&&!v.views?[['Lot',v.img]]:[]),...vw]}
 function openDetail(){V=0;renderDetail(true);$('detail').classList.add('open');$('detail').scrollTop=0}
 function renderDetail(full){
  const r=ranges()[I],v=dVar(),v0=v||r.v[0],sl=slides();
@@ -406,13 +416,13 @@ function renderDetail(full){
   $('sizes').innerHTML=r.sizes.map((s,i)=>`<div class="fx" style="animation-delay:${900+i*110}ms"><b>${s[0]}</b>${s[1]}<br>${s[2]} cm`+(s[3]!=='-'?`<br>${s[3]} L · ${s[4]} kg`:'')+`</div>`).join('');
   fx($('meta'),(v?`Réf. <b>${v.ref}</b><br>EAN lot <b>${v.ean}</b><br>`:`Réf. <b>${r.v.map(x=>x.ref).join(', ')}</b><br>`)+`Matière <b>${v0.mat||'-'}</b> · Colisage <b>${v0.pcb} pièce${v0.pcb>1?'s':''}</b>`,1200);
   setColors(v?v.hex:'#d8d2c8');
-  $('thumbs').innerHTML=sl.map((s,i)=>`<button class="fx" style="animation-delay:${500+i*80}ms" data-i="${i}"><img src="${s[1]}" alt=""><span>${s[0]}</span></button>`).join('');
+  $('thumbs').innerHTML=sl.map((s,i)=>`<button class="fx" style="animation-delay:${500+i*80}ms" data-i="${i}"><img src="${s[1]==='#3d'?BOX3D[dVar().ref].dir+'S3D_front.webp':s[1]}" alt=""><span>${s[0]}</span></button>`).join('');
   $('thumbs').querySelectorAll('button').forEach(b=>b.onclick=()=>{V=+b.dataset.i;renderDetail()});
   $('dimg').removeAttribute('src');
  }
  $('thumbs').querySelectorAll('button').forEach((b,i)=>b.classList.toggle('on',i===V));
  $('dimg').classList.toggle('lr',!!(v&&v.lowres&&sl[V][0]==='Lot'));
- fadeImg($('dimg'),sl[V][1],FAST?90:230);upd360();
+ if(sl[V][1]==='#3d'){$('dimg').style.opacity=0;show3d(dVar().ref)}else{$('v3d').classList.remove('on');$('dimg').style.display='';fadeImg($('dimg'),sl[V][1],FAST?90:230)}
  letters($('bignum'),String(V+1).padStart(2,'0'),full?300:0,60);
  fx($('vname'),sl[V][0]==='Lot'?'VUE D’ENSEMBLE':'VUE '+sl[V][0].toUpperCase(),full?400:80);
  $('note').textContent=dViews().length?(v?'':'Vues présentées dans un coloris prototype.'):'Vues détaillées à venir pour cette gamme.';
@@ -423,14 +433,32 @@ $('cta').onclick=openDetail;$('center').onclick=openDetail;
 $('back').onclick=()=>{$('detail').classList.remove('open');lastRange=null;render()};
 // --- rotation 360° sur 4 vues (face, côté 1, dos, côté 2)
 let FAST=false;const RING=['Face','Côté 1','Dos','Côté 2'];
-function ring(){const sl=slides(),r=RING.map(l=>sl.findIndex(s=>s[0]===l));return r.every(i=>i>=0)?r:null}
+function ring(){return null}
 function upd360(){const r=ring(),m=document.querySelector('.dmain');m.classList.toggle('r360',!!r);if(!r)return;const p=r.indexOf(V);$('dots4').innerHTML=RING.map((_,i)=>`<i class="${i===p?'on':''}"></i>`).join('')}
 function turnTo(p){const r=ring();if(!r)return;p=((p%4)+4)%4;if(r[p]===V)return;V=r[p];FAST=true;renderDetail();FAST=false}
-(function(){const m=document.querySelector('.dmain');let x0=null,p0=0,moved=false;
- m.addEventListener('pointerdown',e=>{if(!ring()||e.target.closest('button'))return;x0=e.clientX;const r=ring();p0=Math.max(0,r.indexOf(V));moved=false;m.classList.add('drag');m.setPointerCapture(e.pointerId)});
- m.addEventListener('pointermove',e=>{if(x0===null)return;const st=Math.round((x0-e.clientX)/80);if(st)moved=true;turnTo(p0+st)});
+// --- pivot 3D sur l'axe vertical : 4 vues plaquées sur un volume (corps) + plan de poignée
+let ang=-28,vel=0,auto=true,raf3=null,built=null;
+function show3d(ref){const B=BOX3D[ref],box=$('r3d'),m=$('v3d');$('dimg').style.display='none';m.classList.add('on');
+ const mh=document.querySelector('.dmain').getBoundingClientRect().height,H=Math.min(mh*.62,480),k=H/B.f[1];
+ const W=B.f[0]*k,D=(B.r[0]+B.l[0])/2*k,hh=B.h[1]*k,ins=6*k; // léger retrait pour souder les arêtes
+ if(built!==ref+H){built=ref+H;
+  const p=B.dir+'S3D_';
+  box.style.width='0px';box.style.height=(H+hh)+'px';
+  box.innerHTML=`
+   <div class="sh" style="width:${W*1.3}px;height:${D*.9}px;margin-left:${-W*.65}px;top:${hh+H-D*.45}px;transform:rotateX(90deg)"></div>
+   <img class="f" src="${p}front.webp" style="width:${W}px;height:${H}px;margin-left:${-W/2}px;top:${hh}px;transform:translateZ(${D/2-ins}px)">
+   <img class="f" src="${p}back.webp" style="width:${W}px;height:${H}px;margin-left:${-W/2}px;top:${hh}px;transform:rotateY(180deg) translateZ(${D/2-ins}px)">
+   <img class="f" src="${p}right.webp" style="width:${D}px;height:${H}px;margin-left:${-D/2}px;top:${hh}px;transform:rotateY(90deg) translateZ(${W/2-ins}px)">
+   <img class="f" src="${p}left.webp" style="width:${D}px;height:${H}px;margin-left:${-D/2}px;top:${hh}px;transform:rotateY(-90deg) translateZ(${W/2-ins}px)">
+   <div class="tp" style="width:${W-2*ins}px;height:${D-2*ins}px;margin-left:${-(W-2*ins)/2}px;top:${hh+2*ins-(D-2*ins)/2}px;background:${B.top};transform:rotateX(90deg)"></div>
+   <img class="f hd" src="${p}handle.webp" style="width:${W}px;height:${hh+2*ins}px;margin-left:${-W/2}px;top:0;transform:translateZ(${-D*.32}px)">`;
+ }
+ if(!raf3){const tick=()=>{if(auto)ang+=.25;else{ang+=vel;vel*=.94}box.style.transform=`rotateX(-6deg) rotateY(${ang}deg)`;raf3=requestAnimationFrame(tick)};raf3=requestAnimationFrame(tick)}
+}
+(function(){const m=$('v3d');let x0=null,a0=0,lx=0,lt=0;
+ m.addEventListener('pointerdown',e=>{auto=false;x0=e.clientX;a0=ang;lx=e.clientX;lt=performance.now();vel=0;m.classList.add('drag');m.setPointerCapture(e.pointerId)});
+ m.addEventListener('pointermove',e=>{if(x0===null)return;ang=a0+(e.clientX-x0)*.45;const t=performance.now();vel=(e.clientX-lx)*.45/Math.max(1,(t-lt)/16);lx=e.clientX;lt=t});
  const up=()=>{x0=null;m.classList.remove('drag')};m.addEventListener('pointerup',up);m.addEventListener('pointercancel',up);
- let tm=null;$('play360').onclick=e=>{e.stopPropagation();clearInterval(tm);const r=ring();if(!r)return;let p=Math.max(0,r.indexOf(V)),n=0;tm=setInterval(()=>{turnTo(++p);if(++n>=4)clearInterval(tm)},420)};
 })();
 $('dp').onclick=()=>{const n=slides().length;V=(V-1+n)%n;renderDetail()};
 $('dn').onclick=()=>{const n=slides().length;V=(V+1)%n;renderDetail()};
