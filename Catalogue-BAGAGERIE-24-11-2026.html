@@ -267,7 +267,7 @@ function setColors(hex){
 }
 function brandsNav(){
  $('brands').innerHTML=BRANDS.map(b=>`<button class="${b===B?'on':''}" data-b="${b}">${b}</button>`).join('');
- $('brands').querySelectorAll('button').forEach(x=>x.onclick=()=>{DIR=1;B=x.dataset.b;I=0;C=0;render(true)});
+ $('brands').querySelectorAll('button').forEach(x=>x.onclick=()=>{DIR=1;B=x.dataset.b;I=0;C=ranges()[0].def;render(true)});
 }
 // --- animations
 function spinImg(el,src,dir){
@@ -293,40 +293,60 @@ function circ(a,b,c){const d=2*(a.x*(b.y-c.y)+b.x*(c.y-a.y)+c.x*(a.y-b.y));if(Ma
 const ease=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
 function arcPath(o,p,q){const ang=pt=>Math.atan2(pt.y-o.y,pt.x-o.x);let a0=ang(p),a1=ang(q),d=a1-a0;while(d>Math.PI)d-=2*Math.PI;while(d<-Math.PI)d+=2*Math.PI;return t=>({x:o.x+o.r*Math.cos(a0+d*t),y:o.y+o.r*Math.sin(a0+d*t)})}
 function fitSize(img){const c=$('center').getBoundingClientRect();const mh=Math.min(innerHeight*.62,600)*(img.classList&&img.classList.contains('lr')?0.68:1),mw=c.width;const nw=img.naturalWidth||600,nh=img.naturalHeight||600;const k=Math.min(mw/nw,mh/nh);return{w:nw*k,h:nh*k}}
-function wheel(src,lowres){
+function wheel(src,lowres,mode){
  const hero=$('hero');
  if(wheelJob)wheelJob.finish();
  if(!hero.getAttribute('src')||hero.getAttribute('src')===src){hero.src=src;hero.classList.toggle('lr',!!lowres);return}
- const fly=$('fly'),hr=hero.getBoundingClientRect(),cr=$('center').getBoundingClientRect();
- const C={x:hr.left+hr.width/2,y:hr.top+hr.height/2};
- const th=$('nimg').getBoundingClientRect();
- const Sx={x:th.left+th.width/2,y:th.top+th.height/2};             // vignette bas-droite
- const P={x:C.x-cr.width*.32,y:-hr.height*.15};                    // sortie haut-gauche
- const from=DIR>0?Sx:P,to=DIR>0?P:Sx;
- const out=new Image();out.src=hero.getAttribute('src');out.style.width=hr.width+'px';out.style.height=hr.height+'px';
- const inc=new Image();inc.src=src;
- fly.append(out,inc);hero.style.opacity=0;const ni=$('nimg');ni.style.transition='opacity .25s';if(DIR>0)ni.style.opacity=0;
- let done=false,raf;
- const finish=()=>{if(done)return;done=true;cancelAnimationFrame(raf);hero.classList.toggle('lr',!!lowres);hero.src=src;hero.style.opacity=1;out.remove();inc.remove();wheelJob=null;setTimeout(()=>{$('nimg').style.opacity=1},60)};
- wheelJob={finish};
- const start=()=>{
-  const probe={naturalWidth:inc.naturalWidth,naturalHeight:inc.naturalHeight,classList:{contains:()=>!!lowres}};
-  const fs=fitSize(probe);inc.style.width=fs.w+'px';inc.style.height=fs.h+'px';
+ const token={};wheelJob={finish:()=>{token.dead=1;hero.classList.toggle('lr',!!lowres);hero.src=src;hero.style.opacity=1;wheelJob=null}};
+ const inc=new Image();
+ const go=()=>{ if(token.dead)return;
+  const fly=$('fly'),hr=hero.getBoundingClientRect(),cr=$('center').getBoundingClientRect();
+  const C={x:hr.left+hr.width/2,y:hr.top+hr.height/2};
+  const th=$('nimg').getBoundingClientRect();
+  const fs=fitSize({naturalWidth:inc.naturalWidth,naturalHeight:inc.naturalHeight,classList:{contains:()=>!!lowres}});
   const Cin={x:cr.left+cr.width/2,y:cr.top+cr.height/2};
-  const o1=circ(from,Cin,to)||{x:Cin.x+1e5,y:Cin.y,r:1e5},o2=circ(from,C,to)||o1;
-  const pin=arcPath(o1,from,Cin),pout=arcPath(o2,C,to);
-  const sIn=Math.max(.08,th.height/fs.h),t0=performance.now(),D=window.WHEEL_MS||1150;
-  const step=now=>{let t=Math.min(1,(now-t0)/D),e=ease(t);
-   const a=pin(e),b=pout(e);
-   const si=DIR>0?sIn+(1-sIn)*e:.3+(.7)*e, so=DIR>0?1-(1-.3)*e:1-(1-sIn)*e;
-   inc.style.transform=`translate(${a.x-fs.w/2}px,${a.y-fs.h/2}px) scale(${si}) rotate(${(1-e)*-10*DIR}deg)`;
-   inc.style.opacity=Math.min(1,.15+e*1.6);
-   out.style.transform=`translate(${b.x-hr.width/2}px,${b.y-hr.height/2}px) scale(${so}) rotate(${e*-10*DIR}deg)`;
-   out.style.opacity=DIR>0?Math.max(0,1-e*1.25):Math.max(0,1-e*0.9);
-   if(t<1)raf=requestAnimationFrame(step);else finish()};
-  raf=requestAnimationFrame(step)};
- if(inc.complete&&inc.naturalWidth)start();else{inc.onload=start;inc.onerror=finish}
+  const out=new Image();out.src=hero.getAttribute('src');out.style.width=hr.width+'px';out.style.height=hr.height+'px';
+  out.style.transform=`translate(${C.x-hr.width/2}px,${C.y-hr.height/2}px)`;
+  inc.style.width=fs.w+'px';inc.style.height=fs.h+'px';inc.style.opacity=0;
+  fly.append(out,inc);hero.style.opacity=0;
+  const ni=$('nimg');ni.style.transition='opacity .25s';if(mode==='wheel'&&DIR>0)ni.style.opacity=0;
+  let done=false,raf;
+  const finish=()=>{if(done)return;done=true;token.dead=1;cancelAnimationFrame(raf);hero.classList.toggle('lr',!!lowres);hero.src=src;hero.style.opacity=1;out.remove();inc.remove();wheelJob=null;setTimeout(()=>{ni.style.opacity=1},60)};
+  wheelJob={finish};
+  let frame;
+  if(mode==='wheel'){
+   const Sx={x:th.left+th.width/2,y:th.top+th.height/2},P={x:C.x-cr.width*.32,y:-hr.height*.15};
+   const from=DIR>0?Sx:P,to=DIR>0?P:Sx;
+   const o1=circ(from,Cin,to)||{x:Cin.x+1e5,y:Cin.y,r:1e5},o2=circ(from,C,to)||o1;
+   const pin=arcPath(o1,from,Cin),pout=arcPath(o2,C,to),sIn=Math.max(.08,th.height/fs.h);
+   frame=e=>{const a=pin(e),b=pout(e);
+    const si=DIR>0?sIn+(1-sIn)*e:.3+.7*e, so=DIR>0?1-.7*e:1-(1-sIn)*e;
+    inc.style.transform=`translate(${a.x-fs.w/2}px,${a.y-fs.h/2}px) scale(${si}) rotate(${(1-e)*-10*DIR}deg)`;
+    inc.style.opacity=Math.min(1,.15+e*1.6);
+    out.style.transform=`translate(${b.x-hr.width/2}px,${b.y-hr.height/2}px) scale(${so}) rotate(${e*-10*DIR}deg)`;
+    out.style.opacity=DIR>0?Math.max(0,1-e*1.25):Math.max(0,1-e*.9)};
+  }else{ // slide coloris : l'actuel part vers la gauche, le nouveau arrive de la droite
+   const dx=Math.min(cr.width*.55,420);
+   frame=e=>{inc.style.transform=`translate(${Cin.x-fs.w/2+dx*(1-e)}px,${Cin.y-fs.h/2}px)`;inc.style.opacity=Math.min(1,e*1.6);
+    out.style.transform=`translate(${C.x-hr.width/2-dx*e}px,${C.y-hr.height/2}px)`;out.style.opacity=Math.max(0,1-e*1.6)};
+  }
+  const D=mode==='wheel'?(window.WHEEL_MS||1150):650,t0=performance.now();frame(0);
+  const step=now=>{const t=Math.min(1,(now-t0)/D);frame(ease(t));if(t<1)raf=requestAnimationFrame(step);else finish()};
+  raf=requestAnimationFrame(step);
+ };
+ inc.onload=go;inc.onerror=()=>wheelJob&&wheelJob.finish();inc.src=src;
+ if(inc.complete&&inc.naturalWidth){inc.onload=null;go()}
 }
+// coloris par défaut : éviter la même teinte d'une gamme à l'autre
+(function(){const hx=h=>[1,3,5].map(i=>parseInt(h.substr(i,2),16)),dist=(a,b)=>{a=hx(a);b=hx(b);return Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2])};
+ const FORCE={'RAFALE|Delta':'Blue','RAFALE|Tarmac':'Kaki','RAFALE|Tarmac Trunk':'Orange','RAFALE|Shield':'Mint','RAFALE|Aero Core':'Red'};
+ let prev=null,pb=null;
+ DATA.forEach(r=>{if(r.brand!==pb){prev=null;pb=r.brand}
+  let d=r.v.findIndex(v=>v.color===FORCE[r.brand+'|'+r.name]);
+  if(d<0){d=0;if(prev){const k=r.v.findIndex(v=>dist(v.hex,prev)>110);if(k>=0)d=k}}
+  r.def=d;prev=r.v[d].hex});
+})();
+function fadeImg(el,src){if(el.getAttribute('src')===src)return;el.style.transition='opacity .25s';el.style.opacity=0;clearTimeout(el._t);el._t=setTimeout(()=>{el.src=src;const sh=()=>{el.style.opacity=1};if(el.complete)sh();else el.onload=sh},230)}
 let lastRange=null;
 function render(anim){
  const rs=ranges(),r=rs[I],v=r.v[C],newRange=lastRange!==r;lastRange=r;
@@ -335,8 +355,8 @@ function render(anim){
  if(newRange){
   const wm=$('wm');wm.textContent=r.name.replace(/ Trunk.*/,'');wm.classList.remove('mv');void wm.offsetWidth;wm.classList.add('mv');
   fx($('kick'),r.brand,0);
-  letters($('title'),r.name,80,32,true);
-  $('title').style.fontSize=Math.max(...r.name.split(' ').map(w=>w.length))>8?'clamp(40px,4.4vw,70px)':'';
+  letters($('title'),r.name.replace(/ (\S{1,3})(?= |$)/g,'\u00a0$1'),80,32,true);
+  $('title').style.fontSize=Math.max(...r.name.replace(/ (\S{1,3})(?= |$)/g,'_$1').split(' ').map(w=>w.length))>8?'clamp(40px,4.4vw,70px)':'';
   fx($('sub'),r.title.split('–')[1]?.trim()||r.kind,320);
   fx($('desc'),r.desc,420);
   $('cta').classList.remove('fx');void $('cta').offsetWidth;$('cta').style.animationDelay='520ms';$('cta').classList.add('fx');
@@ -350,16 +370,16 @@ function render(anim){
  $('pvc').innerHTML='PV conseillé <b>'+eur(v.pvc)+'</b> TTC';
  fx($('cname'),v.colorFr,newRange?500:0);
  $('cref').textContent=v.ref+' · EAN '+v.ean;
- wheel(v.img,v.lowres);
+ wheel(v.img,v.lowres,newRange?'wheel':'slide');
  r.v.forEach(x=>pre(x.img));
  $('num').textContent=String(I+1).padStart(2,'0');
  $('dots').innerHTML=rs.map((_,i)=>`<i class="${i===I?'on':''}" data-i="${i}"></i>`).join('');
- $('dots').querySelectorAll('i').forEach(d=>d.onclick=()=>{DIR=+d.dataset.i<I?-1:1;I=+d.dataset.i;C=0;render(true)});
+ $('dots').querySelectorAll('i').forEach(d=>d.onclick=()=>{DIR=+d.dataset.i<I?-1:1;I=+d.dataset.i;C=ranges()[I].def;render(true)});
  $('mid').innerHTML=`<b>${r.kind.toUpperCase()}</b>${r.v.length} coloris · ${rs.length} gammes ${r.brand}`;
- const nx=C+1<r.v.length?{v:r.v[C+1],lab:'COLORIS SUIVANT',name:r.v[C+1].colorFr}:{v:rs[(I+1)%rs.length].v[0],lab:'GAMME SUIVANTE',name:rs[(I+1)%rs.length].name};
+ const nx=C+1<r.v.length?{v:r.v[C+1],lab:'COLORIS SUIVANT',name:r.v[C+1].colorFr}:{v:rs[(I+1)%rs.length].v[rs[(I+1)%rs.length].def],lab:'GAMME SUIVANTE',name:rs[(I+1)%rs.length].name};
  setTimeout(()=>{$('nimg').src=nx.v.img;$('nlab').textContent=nx.lab;$('nname').textContent=nx.name},wheelJob?1150:0);pre(nx.v.img);
 }
-function go(d){DIR=d<0?-1:1;const n=ranges().length;I=(I+d+n)%n;C=0;render(true)}
+function go(d){DIR=d<0?-1:1;const n=ranges().length;I=(I+d+n)%n;C=ranges()[I].def;render(true)}
 $('prev').onclick=()=>go(-1);$('next').onclick=()=>go(1);$('nextc').onclick=()=>{const r=ranges()[I];if(C+1<r.v.length){DIR=1;C++;render()}else go(1)};
 // detail : coloris assorti aux vues ; tous les coloris affichés, non cliquables
 function dVar(){const r=ranges()[I],sel=r.v[C];if(sel.views)return sel;if(r.views.length)return r.pv==null?null:r.v[r.pv];return sel}
@@ -385,7 +405,7 @@ function renderDetail(full){
  }
  $('thumbs').querySelectorAll('button').forEach((b,i)=>b.classList.toggle('on',i===V));
  $('dimg').classList.toggle('lr',!!(v&&v.lowres&&sl[V][0]==='Lot'));
- spinImg($('dimg'),sl[V][1]);
+ fadeImg($('dimg'),sl[V][1]);
  letters($('bignum'),String(V+1).padStart(2,'0'),full?300:0,60);
  fx($('vname'),sl[V][0]==='Lot'?'VUE D’ENSEMBLE':'VUE '+sl[V][0].toUpperCase(),full?400:80);
  $('note').textContent=dViews().length?(v?'':'Vues présentées dans un coloris prototype.'):'Vues détaillées à venir pour cette gamme.';
@@ -406,7 +426,7 @@ let wheelLock=0;
 $('stage').addEventListener('wheel',e=>{if(innerWidth<900)return;const t=Date.now();if(t-wheelLock<900||Math.abs(e.deltaY)<25)return;wheelLock=t;go(e.deltaY>0?1:-1)},{passive:true});
 let tx=null;$('center').addEventListener('touchstart',e=>tx=e.touches[0].clientX,{passive:true});
 $('center').addEventListener('touchend',e=>{if(tx===null)return;const dx=e.changedTouches[0].clientX-tx;if(Math.abs(dx)>50){go(dx<0?1:-1)}tx=null});
-render(true);
+C=ranges()[0].def;render(true);
 </script>
 </body>
 </html>
