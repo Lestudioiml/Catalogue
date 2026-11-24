@@ -134,7 +134,14 @@ h1{font-family:Anton,sans-serif;font-weight:400;font-size:clamp(46px,6vw,92px);l
 .dmain img.out{opacity:0;transform:scale(.97)}
 .dmain img.turn-out{animation:turnOut .35s cubic-bezier(.55,0,.8,.4) forwards}
 .dmain img.turn-in{animation:turnIn .6s cubic-bezier(.15,.75,.25,1) forwards}
-.dmain{perspective:1400px}
+.dmain{perspective:1400px;touch-action:pan-y;user-select:none}
+.dmain.r360{cursor:grab}.dmain.r360.drag{cursor:grabbing}
+.dmain img{-webkit-user-drag:none;pointer-events:none}
+.b360{position:absolute;left:60px;top:8px;display:none;align-items:center;gap:10px;background:#fff;border-radius:30px;padding:8px 8px 8px 16px;font-size:11px;font-weight:700;letter-spacing:.14em;color:#141414;box-shadow:0 6px 18px #0000001a;z-index:3}
+.dmain.r360 .b360{display:flex}
+.b360 .ic{font-size:14px;letter-spacing:0}
+.b360 button{background:#141414;color:#fff;border-radius:20px;padding:7px 12px;font-size:10px;letter-spacing:.14em;font-weight:700}
+.b360 .dots4{display:flex;gap:4px}.b360 .dots4 i{width:6px;height:6px;border-radius:50%;background:#14141426}.b360 .dots4 i.on{background:#141414}
 .bignum .ch{animation-duration:.55s}
 .dsw span.dot{width:30px;height:30px;border-radius:50%;box-shadow:0 0 0 1px #0002 inset;display:inline-block;animation:pop .45s cubic-bezier(.2,1.4,.4,1) both}
 .dsw span.dot.on{box-shadow:0 0 0 2px #f4f1ec,0 0 0 4px #141414}
@@ -231,7 +238,7 @@ h1{font-family:Anton,sans-serif;font-weight:400;font-size:clamp(46px,6vw,92px);l
   <div class="dr">
    <div class="bignum" id="bignum">01</div>
    <div class="vname" id="vname"></div>
-   <div class="dmain"><button class="darr p" id="dp">←</button><img id="dimg" alt=""><button class="darr n" id="dn">→</button></div>
+   <div class="dmain"><button class="darr p" id="dp">←</button><img id="dimg" alt=""><button class="darr n" id="dn">→</button><div class="b360" id="b360"><span class="ic">⟲</span>360° · GLISSER POUR TOURNER<span class="dots4" id="dots4"></span><button id="play360">TOURNER</button></div></div>
    <div class="thumbs" id="thumbs"></div>
    <div class="note" id="note"></div>
   </div>
@@ -346,7 +353,7 @@ function wheel(src,lowres,mode){
   if(d<0){d=0;if(prev){const k=r.v.findIndex(v=>dist(v.hex,prev)>110);if(k>=0)d=k}}
   r.def=d;prev=r.v[d].hex});
 })();
-function fadeImg(el,src){if(el.getAttribute('src')===src)return;el.style.transition='opacity .25s';el.style.opacity=0;clearTimeout(el._t);el._t=setTimeout(()=>{el.src=src;const sh=()=>{el.style.opacity=1};if(el.complete)sh();else el.onload=sh},230)}
+function fadeImg(el,src,ms=230){if(el.getAttribute('src')===src)return;el.style.transition=`opacity ${ms}ms`;el.style.opacity=0;clearTimeout(el._t);el._t=setTimeout(()=>{el.src=src;const sh=()=>{el.style.opacity=1};if(el.complete)sh();else el.onload=sh},ms)}
 let lastRange=null;
 function render(anim){
  const rs=ranges(),r=rs[I],v=r.v[C],newRange=lastRange!==r;lastRange=r;
@@ -405,7 +412,7 @@ function renderDetail(full){
  }
  $('thumbs').querySelectorAll('button').forEach((b,i)=>b.classList.toggle('on',i===V));
  $('dimg').classList.toggle('lr',!!(v&&v.lowres&&sl[V][0]==='Lot'));
- fadeImg($('dimg'),sl[V][1]);
+ fadeImg($('dimg'),sl[V][1],FAST?90:230);upd360();
  letters($('bignum'),String(V+1).padStart(2,'0'),full?300:0,60);
  fx($('vname'),sl[V][0]==='Lot'?'VUE D’ENSEMBLE':'VUE '+sl[V][0].toUpperCase(),full?400:80);
  $('note').textContent=dViews().length?(v?'':'Vues présentées dans un coloris prototype.'):'Vues détaillées à venir pour cette gamme.';
@@ -414,6 +421,17 @@ function renderDetail(full){
 }
 $('cta').onclick=openDetail;$('center').onclick=openDetail;
 $('back').onclick=()=>{$('detail').classList.remove('open');lastRange=null;render()};
+// --- rotation 360° sur 4 vues (face, côté 1, dos, côté 2)
+let FAST=false;const RING=['Face','Côté 1','Dos','Côté 2'];
+function ring(){const sl=slides(),r=RING.map(l=>sl.findIndex(s=>s[0]===l));return r.every(i=>i>=0)?r:null}
+function upd360(){const r=ring(),m=document.querySelector('.dmain');m.classList.toggle('r360',!!r);if(!r)return;const p=r.indexOf(V);$('dots4').innerHTML=RING.map((_,i)=>`<i class="${i===p?'on':''}"></i>`).join('')}
+function turnTo(p){const r=ring();if(!r)return;p=((p%4)+4)%4;if(r[p]===V)return;V=r[p];FAST=true;renderDetail();FAST=false}
+(function(){const m=document.querySelector('.dmain');let x0=null,p0=0,moved=false;
+ m.addEventListener('pointerdown',e=>{if(!ring()||e.target.closest('button'))return;x0=e.clientX;const r=ring();p0=Math.max(0,r.indexOf(V));moved=false;m.classList.add('drag');m.setPointerCapture(e.pointerId)});
+ m.addEventListener('pointermove',e=>{if(x0===null)return;const st=Math.round((x0-e.clientX)/80);if(st)moved=true;turnTo(p0+st)});
+ const up=()=>{x0=null;m.classList.remove('drag')};m.addEventListener('pointerup',up);m.addEventListener('pointercancel',up);
+ let tm=null;$('play360').onclick=e=>{e.stopPropagation();clearInterval(tm);const r=ring();if(!r)return;let p=Math.max(0,r.indexOf(V)),n=0;tm=setInterval(()=>{turnTo(++p);if(++n>=4)clearInterval(tm)},420)};
+})();
 $('dp').onclick=()=>{const n=slides().length;V=(V-1+n)%n;renderDetail()};
 $('dn').onclick=()=>{const n=slides().length;V=(V+1)%n;renderDetail()};
 document.addEventListener('keydown',e=>{
